@@ -1,0 +1,36 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node --version
+      # The first installation step ensures that all of our production
+      # dependencies work on the given Node.js version, this helps us find
+      # dependencies that don't match our engines field:
+      - run: npm install --production --engine-strict --ignore-scripts --no-package-lock
+      # Clean up the production install, before installing dev/production:
+      - run: rm -rf node_modules
+      - run: npm install
+
+      - name: Publish to Github Packages
+        working-directory: build
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > .npmrc
+          npm config set registry https://npm.pkg.github.com
+          npm publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
